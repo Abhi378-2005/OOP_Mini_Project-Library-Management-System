@@ -1,21 +1,19 @@
-<p align="center">
-  <a href="" rel="noopener">
-    <img width=200px height=200px src="https://i.imgur.com/6wj0hh6.jpg" alt="Project logo">
-  </a>
-</p>
-
 <h3 align="center">Library Management System (LMS)</h3>
 
 <div align="center">
 
 [![Status](https://img.shields.io/badge/status-active-success.svg)]()
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](/LICENSE)
+[![Java](https://img.shields.io/badge/Java-ED8B00?style=flat&logo=openjdk&logoColor=white)]()
+[![Swing](https://img.shields.io/badge/Swing-GUI-orange.svg)]()
+[![AWT](https://img.shields.io/badge/AWT-Graphics-red.svg)]()
+[![TXT](https://img.shields.io/badge/Storage-TXT-green.svg)]()
+[![JAR](https://img.shields.io/badge/Package-JAR-blue.svg)]()
 
 </div>
 
 ---
 
-<p align="center"> 
+<p align="center"> n
 A simple **Java-based Library Management System (LMS)** with a Swing GUI for managing books, members, librarians, and transactions.  
 <br>
 Easily runnable via `.bat` files, directly from the terminal, or as a compiled `.jar` file.
