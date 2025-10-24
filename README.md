@@ -1,114 +1,209 @@
 <p align="center">
   <a href="" rel="noopener">
- <img width=200px height=200px src="https://i.imgur.com/6wj0hh6.jpg" alt="Project logo"></a>
+    <img width=200px height=200px src="https://i.imgur.com/6wj0hh6.jpg" alt="Project logo">
+  </a>
 </p>
 
-<h3 align="center">Project Title</h3>
+<h3 align="center">Library Management System (LMS)</h3>
 
 <div align="center">
 
 [![Status](https://img.shields.io/badge/status-active-success.svg)]()
-[![GitHub Issues](https://img.shields.io/github/issues/kylelobo/The-Documentation-Compendium.svg)](https://github.com/kylelobo/The-Documentation-Compendium/issues)
-[![GitHub Pull Requests](https://img.shields.io/github/issues-pr/kylelobo/The-Documentation-Compendium.svg)](https://github.com/kylelobo/The-Documentation-Compendium/pulls)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](/LICENSE)
 
 </div>
 
 ---
 
-<p align="center"> Few lines describing your project.
-    <br> 
+<p align="center"> 
+A simple **Java-based Library Management System (LMS)** with a Swing GUI for managing books, members, librarians, and transactions.  
+<br>
+Easily runnable via `.bat` files, directly from the terminal, or as a compiled `.jar` file.
 </p>
+
+---
 
 ## 📝 Table of Contents
 
 - [About](#about)
+- [Folder Structure](#structure)
 - [Getting Started](#getting_started)
-- [Deployment](#deployment)
+  - [Prerequisites](#prerequisites)
+  - [Running the Project](#running)
+  - [Building the JAR](#build)
 - [Usage](#usage)
 - [Built Using](#built_using)
-- [TODO](../TODO.md)
-- [Contributing](../CONTRIBUTING.md)
 - [Authors](#authors)
 - [Acknowledgments](#acknowledgement)
 
-## 🧐 About <a name = "about"></a>
+---
 
-Write about 1-2 paragraphs describing the purpose of your project.
+## 🧐 About <a name="about"></a>
 
-## 🏁 Getting Started <a name = "getting_started"></a>
+This project is a **desktop-based Library Management System (LMS)** built in **Java** using **Swing** for the GUI.  
+It allows librarians to:
+- Manage books and members  
+- Record transactions  
+- Handle logins and view reports  
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See [deployment](#deployment) for notes on how to deploy the project on a live system.
+The application supports local data storage through text or serialized files and can be extended to use databases.
 
-### Prerequisites
+---
 
-What things you need to install the software and how to install them.
-
-```
-Give examples
-```
-
-### Installing
-
-A step by step series of examples that tell you how to get a development env running.
-
-Say what the step will be
+## 📁 Folder Structure <a name="structure"></a>
 
 ```
-Give the example
+LMS/
+│
+├── bin/                    # Compiled .class files (auto-generated after build)
+├── data/                   # Application data (book list, member data, etc.)
+├── src/                    # Source code files
+│   ├── Book.java
+│   ├── FileHandler.java
+│   ├── Librarian.java
+│   ├── LibraryException.java
+│   ├── LibraryGUI.java
+│   ├── LoginScreen.java
+│   ├── Main.java
+│   ├── Member.java
+│   └── Transaction.java
+│
+├── buildJar.bat            # Builds the JAR file
+├── run.bat                 # Runs the program easily via batch script
+├── manifest.txt            # Manifest file for JAR packaging
+├── .gitignore
+└── README.md
 ```
 
-And repeat
+---
 
+## 🏁 Getting Started <a name="getting_started"></a>
+
+These instructions will help you set up, run, and build the LMS project on your local system.
+
+### ✅ Prerequisites <a name="prerequisites"></a>
+
+Make sure you have the following installed:
+
+- **Java JDK 8 or higher**
+- **Command Prompt / Terminal access**
+- (Optional) **VS Code** or **Eclipse** if you prefer running from an IDE
+
+To verify Java installation:
+```bash
+java -version
+javac -version
 ```
-until finished
+
+---
+
+## ▶ Running the Project <a name="running"></a>
+
+You can run the LMS in **three ways**:
+
+---
+
+### 🧩 1. Run Normally (from source)
+If you just want to compile and run it manually:
+
+```bash
+cd src
+javac *.java
+java Main
 ```
 
-End with an example of getting some data out of the system or using it for a little demo.
+---
 
-## 🔧 Running the tests <a name = "tests"></a>
+### ⚡ 2. Run via `run.bat`
+Simply double-click on the `run.bat` file or execute in terminal:
 
-Explain how to run the automated tests for this system.
-
-### Break down into end to end tests
-
-Explain what these tests test and why
-
-```
-Give an example
+```bash
+run.bat
 ```
 
-### And coding style tests
+> 💡 The `run.bat` file automatically compiles all Java files in `src/` and runs the main application.
 
-Explain what these tests test and why
+---
 
+### 🏗️ 3. Run via `.jar` File
+If you already have the JAR built:
+
+```bash
+java -jar LMS.jar
 ```
-Give an example
+
+If it’s not built yet, see the next section.
+
+---
+
+## 🧱 Building the JAR <a name="build"></a>
+
+You can build the JAR manually or using the provided batch script.
+
+### 🔹 Option 1: Use `buildJar.bat`
+Just double-click the file or run:
+```bash
+buildJar.bat
 ```
+
+This will:
+1. Compile all `.java` files in `/src`
+2. Create `.class` files in `/bin`
+3. Package them into `LMS.jar` using `manifest.txt`
+
+> Ensure `manifest.txt` includes the entry:
+> ```
+> Main-Class: Main
+> ```
+
+---
+
+### 🔹 Option 2: Build Manually
+If you want to build manually from command line:
+
+```bash
+javac -d bin src/*.java
+jar cfm LMS.jar manifest.txt -C bin .
+```
+
+This creates `LMS.jar` in your root directory.
+
+---
 
 ## 🎈 Usage <a name="usage"></a>
 
-Add notes about how to use the system.
+- Launch the app → Login screen appears.  
+- Use librarian credentials to log in.  
+- Perform actions like:
+  - Add / Remove Books
+  - Register Members
+  - Record Book Transactions
+  - View Reports  
 
-## 🚀 Deployment <a name = "deployment"></a>
+---
 
-Add additional notes about how to deploy this on a live system.
+## ⛏ Built Using <a name="built_using"></a>
 
-## ⛏️ Built Using <a name = "built_using"></a>
+- **Java SE** — Core language  
+- **Swing** — GUI Framework  
+- **AWT** — Event Handling & Layout  
+- **File I/O** — Data persistence  
 
-- [MongoDB](https://www.mongodb.com/) - Database
-- [Express](https://expressjs.com/) - Server Framework
-- [VueJs](https://vuejs.org/) - Web Framework
-- [NodeJs](https://nodejs.org/en/) - Server Environment
+---
 
-## ✍️ Authors <a name = "authors"></a>
+## ✍ Authors <a name="authors"></a>
 
-- [@kylelobo](https://github.com/kylelobo) - Idea & Initial work
+- **[@Siddhesh Paithankar](https://github.com/siddheshpaithankar)** — Developer & Maintainer  
 
-See also the list of [contributors](https://github.com/kylelobo/The-Documentation-Compendium/contributors) who participated in this project.
+---
 
-## 🎉 Acknowledgements <a name = "acknowledgement"></a>
+## 🎉 Acknowledgments <a name="acknowledgement"></a>
 
-- Hat tip to anyone whose code was used
-- Inspiration
-- References
+- Java Swing documentation  
+- Oracle Java Tutorials  
+- Inspiration from classic library management systems  
+
+---
+
+> 💾 **Note:**  
+> Always run the project from the root directory (where `src`, `bin`, and `data` folders are located) for relative paths to work properly.
