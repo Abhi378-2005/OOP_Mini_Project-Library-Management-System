@@ -32,6 +32,14 @@ public class Transaction implements Serializable {
         this.isReturned = true;
         this.returnDate = LocalDate.now();
     }
+    
+    // --- ADDED FOR ROLLBACK LOGIC ---
+    // This allows the GUI to undo the return if a file save fails
+    public void undoReturn() {
+        this.isReturned = false;
+        this.returnDate = null;
+    }
+    // --- END ADDITION ---
 
     @Override
     public String toString() {
@@ -42,3 +50,4 @@ public class Transaction implements Serializable {
                (isReturned ? " | Returned: " + returnDate : " | Not Returned");
     }
 }
+

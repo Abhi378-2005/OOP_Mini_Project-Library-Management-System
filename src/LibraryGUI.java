@@ -2,11 +2,12 @@ package src;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.time.LocalDate; // <-- Added this missing import
 import java.util.ArrayList;
 import java.util.UUID;
-import java.util.stream.Collectors; // <-- FIXED: Added this missing import
-import src.LibraryException; // Changed to simple import to avoid nested class issues
-import src.LibraryException.FileOperationException; // Explicitly import the nested class
+import java.util.stream.Collectors; 
+import src.LibraryException; 
+import src.LibraryException.FileOperationException; 
 
 public class LibraryGUI extends JFrame {
     private ArrayList<Book> books;
@@ -19,6 +20,12 @@ public class LibraryGUI extends JFrame {
     private JPanel mainPanel;
     private CardLayout cardLayout;
     
+    // --- FIX: Store table models as class fields ---
+    private DefaultTableModel bookTableModel;
+    private DefaultTableModel memberTableModel;
+    private DefaultTableModel transactionTableModel;
+    // --- END FIX ---
+
     // Color scheme
     private final Color PRIMARY_COLOR = new Color(41, 128, 185);
     private final Color SECONDARY_COLOR = new Color(52, 152, 219);
@@ -32,15 +39,25 @@ public class LibraryGUI extends JFrame {
         // --- FIX: Handle FileOperationException during data loading ---
         try {
             books = FileHandler.readFromFile(bookFile);
-            members = FileHandler.readFromFile(memberFile);
+        } catch (FileOperationException e) { 
+            showMessage("Warning: Could not load book data. Starting with empty list. Error: " + e.getMessage(), 
+                        "Data Load Error", JOptionPane.WARNING_MESSAGE);
+            books = new ArrayList<>();
+        }
+        
+        try {
+             members = FileHandler.readFromFile(memberFile);
+        } catch (FileOperationException e) { 
+             showMessage("Warning: Could not load member data. Starting with empty list. Error: " + e.getMessage(), 
+                        "Data Load Error", JOptionPane.WARNING_MESSAGE);
+            members = new ArrayList<>();
+        }
+        
+        try {
             transactions = FileHandler.readFromFile(transactionFile);
         } catch (FileOperationException e) { 
-            // Display a warning and initialize lists to prevent NullPointerExceptions
-            showMessage("Warning: Could not load data from file. Starting with empty data. Error: " + e.getMessage(), 
-                        "Data Load Error", 
-                        JOptionPane.WARNING_MESSAGE);
-            books = new ArrayList<>();
-            members = new ArrayList<>();
+            showMessage("Warning: Could not load transaction data. Starting with empty list. Error: " + e.getMessage(), 
+                        "Data Load Error", JOptionPane.WARNING_MESSAGE);
             transactions = new ArrayList<>();
         }
         // --- END FIX ---
@@ -66,16 +83,16 @@ public class LibraryGUI extends JFrame {
     
     // --- Utility Methods ---
     
-    // --- FIX: Update the saveData method to handle the checked exception ---
-    private void saveData() {
+    // --- FIX: Update the saveData method to throw the checked exception ---
+    // This allows the calling method to handle the error (e.g., roll back a change)
+    private void saveData() throws FileOperationException {
         try {
             FileHandler.saveToFile(books, bookFile);
             FileHandler.saveToFile(members, memberFile);
             FileHandler.saveToFile(transactions, transactionFile);
         } catch (FileOperationException e) { 
-            showMessage("Critical Error: Failed to save data to file. Changes may be lost. Error: " + e.getMessage(), 
-                        "Save Error", 
-                        JOptionPane.ERROR_MESSAGE);
+            // Re-throw the exception so the UI method can catch it and show a message
+            throw e;
         }
     }
     // --- END FIX ---
@@ -88,7 +105,7 @@ public class LibraryGUI extends JFrame {
     private JButton createStyledButton(String text, Color background) {
         JButton button = new JButton(text);
         button.setBackground(background);
-        button.setForeground(Color.BLACK);
+        button.setForeground(Color.WHITE);
         button.setFont(new Font("Segoe UI", Font.BOLD, 14));
         button.setFocusPainted(false);
         button.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
@@ -113,13 +130,22 @@ public class LibraryGUI extends JFrame {
         dashButton.addActionListener(e -> cardLayout.show(mainPanel, "Dashboard"));
         
         JButton bookButton = createStyledButton("Books", SECONDARY_COLOR);
-        bookButton.addActionListener(e -> cardLayout.show(mainPanel, "BookManagement"));
+        bookButton.addActionListener(e -> {
+            updateBookTable(); // Refresh book data when switching
+            cardLayout.show(mainPanel, "BookManagement");
+        });
 
         JButton memberButton = createStyledButton("Members", SECONDARY_COLOR);
-        memberButton.addActionListener(e -> cardLayout.show(mainPanel, "MemberManagement"));
+        memberButton.addActionListener(e -> {
+            updateMemberTable(); // Refresh member data when switching
+            cardLayout.show(mainPanel, "MemberManagement");
+        });
 
         JButton transButton = createStyledButton("Transactions", SECONDARY_COLOR);
-        transButton.addActionListener(e -> cardLayout.show(mainPanel, "TransactionManagement"));
+        transButton.addActionListener(e -> {
+            updateTransactionTable(); // Refresh transaction data when switching
+            cardLayout.show(mainPanel, "TransactionManagement");
+        });
         
         buttonPanel.add(dashButton);
         buttonPanel.add(bookButton);
@@ -150,7 +176,21 @@ public class LibraryGUI extends JFrame {
         long activeTrans = transactions.stream().filter(t -> !t.isReturned()).count();
         contentPanel.add(createStatCard("Books Issued", String.valueOf(activeTrans), DANGER_COLOR));
         
-        panel.add(contentPanel, BorderLayout.CENTER);
+        // --- FIX: Add a refresh button to dashboard ---
+        JButton refreshButton = createStyledButton("Refresh Stats", PRIMARY_COLOR);
+        refreshButton.addActionListener(e -> {
+            // Re-create the dashboard panel to get new stats and show it
+            mainPanel.remove(0); // Remove old dashboard
+            mainPanel.add(createDashboardPanel(), "Dashboard", 0); // Add new one at the same index
+            cardLayout.show(mainPanel, "Dashboard");
+        });
+        
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        footer.setBackground(BACKGROUND_COLOR);
+        footer.add(refreshButton);
+        panel.add(footer, BorderLayout.SOUTH);
+        // --- END FIX ---
+
         return panel;
     }
     
@@ -183,24 +223,28 @@ public class LibraryGUI extends JFrame {
         
         // Table setup
         String[] columnNames = {"ID", "Title", "Author", "Status"};
-        DefaultTableModel model = new DefaultTableModel(columnNames, 0);
-        JTable bookTable = new JTable(model);
+        // --- FIX: Use the class field ---
+        bookTableModel = new DefaultTableModel(columnNames, 0);
+        JTable bookTable = new JTable(bookTableModel);
+        // --- END FIX ---
         JScrollPane scrollPane = new JScrollPane(bookTable);
         
         // Initial table load
-        updateBookTable(model);
+        updateBookTable();
         
         JPanel controlsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 15));
         controlsPanel.setBackground(BACKGROUND_COLOR.darker());
         
         JButton addButton = createStyledButton("Add New Book", ACCENT_COLOR);
-        addButton.addActionListener(e -> showAddBookDialog(model));
+        // --- FIX: Call method without parameter ---
+        addButton.addActionListener(e -> showAddBookDialog());
         
         JButton deleteButton = createStyledButton("Remove Book", DANGER_COLOR);
-        deleteButton.addActionListener(e -> deleteBook(bookTable, model));
+        deleteButton.addActionListener(e -> deleteBook(bookTable));
         
         JButton searchButton = createStyledButton("Search Books", SECONDARY_COLOR);
-        searchButton.addActionListener(e -> searchBook(model));
+        searchButton.addActionListener(e -> searchBook());
+        // --- END FIX ---
         
         controlsPanel.add(addButton);
         controlsPanel.add(deleteButton);
@@ -211,10 +255,11 @@ public class LibraryGUI extends JFrame {
         return panel;
     }
 
-    private void updateBookTable(DefaultTableModel model) {
-        model.setRowCount(0); // Clear existing rows
+    // --- FIX: Method now uses class field, no parameter ---
+    private void updateBookTable() {
+        bookTableModel.setRowCount(0); // Clear existing rows
         for (Book b : books) {
-            model.addRow(new Object[]{
+            bookTableModel.addRow(new Object[]{
                 b.getId(), 
                 b.getTitle(), 
                 b.getAuthor(), 
@@ -223,7 +268,8 @@ public class LibraryGUI extends JFrame {
         }
     }
     
-    private void showAddBookDialog(DefaultTableModel model) {
+    private void showAddBookDialog() {
+    // --- END FIX ---
         JTextField idField = new JTextField(10);
         JTextField titleField = new JTextField(10);
         JTextField authorField = new JTextField(10);
@@ -240,6 +286,7 @@ public class LibraryGUI extends JFrame {
                  "Add New Book", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         
         if (result == JOptionPane.OK_OPTION) {
+            Book newBook = null;
             try {
                 String id = idField.getText().trim();
                 String title = titleField.getText().trim();
@@ -253,21 +300,28 @@ public class LibraryGUI extends JFrame {
                     throw new LibraryException.DuplicateIdException(id, "Book");
                 }
                 
-                Book newBook = new Book(id, title, author);
+                newBook = new Book(id, title, author);
                 books.add(newBook);
-                saveData(); // Calls the method that now includes try-catch
-                updateBookTable(model);
+                saveData(); // Attempt to save
+                
+                updateBookTable();
                 showMessage("Book added successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
-            } catch (LibraryException e) {
+                
+            } catch (LibraryException | FileOperationException e) {
+                // --- FIX: Rollback logic ---
+                // If save fails or input is invalid, remove the book that was added
+                if (newBook != null) {
+                    books.remove(newBook);
+                }
                 showMessage("Book Add Failed: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
     
-    private void deleteBook(JTable table, DefaultTableModel model) {
+    private void deleteBook(JTable table) {
         int selectedRow = table.getSelectedRow();
         if (selectedRow >= 0) {
-            String bookId = (String) model.getValueAt(selectedRow, 0);
+            String bookId = (String) bookTableModel.getValueAt(selectedRow, 0);
             
             Book bookToRemove = books.stream()
                 .filter(b -> b.getId().equals(bookId))
@@ -280,43 +334,56 @@ public class LibraryGUI extends JFrame {
                     return;
                 }
                 
-                books.remove(bookToRemove);
-                saveData(); // Calls the method that now includes try-catch
-                updateBookTable(model);
-                showMessage("Book " + bookId + " removed successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                try {
+                    books.remove(bookToRemove);
+                    saveData(); // Attempt to save
+                    
+                    updateBookTable();
+                    showMessage("Book " + bookId + " removed successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                
+                } catch (FileOperationException e) {
+                    // --- FIX: Rollback logic ---
+                    // If save fails, add the book back to the list
+                    books.add(bookToRemove);
+                    showMessage("Delete Failed: Could not save changes. Error: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                }
             }
         } else {
             showMessage("Please select a book to remove.", "Warning", JOptionPane.WARNING_MESSAGE);
         }
     }
     
-    private void searchBook(DefaultTableModel model) {
+    private void searchBook() {
+    // --- FIX: Use class field ---
         String query = JOptionPane.showInputDialog(this, "Enter ID, Title, or Author to search:", "Search Books", JOptionPane.PLAIN_MESSAGE);
         if (query != null && !query.trim().isEmpty()) {
             String lowerQuery = query.trim().toLowerCase();
-            model.setRowCount(0);
+            bookTableModel.setRowCount(0);
             
+            int foundCount = 0;
             for (Book b : books) {
                 if (b.getId().toLowerCase().contains(lowerQuery) || 
                     b.getTitle().toLowerCase().contains(lowerQuery) || 
                     b.getAuthor().toLowerCase().contains(lowerQuery)) {
                     
-                    model.addRow(new Object[]{
+                    bookTableModel.addRow(new Object[]{
                         b.getId(), 
                         b.getTitle(), 
                         b.getAuthor(), 
                         b.isIssued() ? "Issued" : "Available"
                     });
+                    foundCount++;
                 }
             }
-            if (model.getRowCount() == 0) {
+            if (foundCount == 0) {
                 showMessage("No books found matching the query.", "Search Result", JOptionPane.INFORMATION_MESSAGE);
-                updateBookTable(model); // Restore full list if nothing found
+                updateBookTable(); // Restore full list if nothing found
             }
         } else {
-            updateBookTable(model); // Restore full list if search is cancelled or empty
+            updateBookTable(); // Restore full list if search is cancelled or empty
         }
     }
+    // --- END FIX ---
     
     // --- Member Management Panel ---
     private JPanel createMemberPanel() {
@@ -325,18 +392,22 @@ public class LibraryGUI extends JFrame {
         
         // Table setup
         String[] columnNames = {"ID", "Name", "Books Borrowed"};
-        DefaultTableModel model = new DefaultTableModel(columnNames, 0);
-        JTable memberTable = new JTable(model);
+        // --- FIX: Use the class field ---
+        memberTableModel = new DefaultTableModel(columnNames, 0);
+        JTable memberTable = new JTable(memberTableModel);
+        // --- END FIX ---
         JScrollPane scrollPane = new JScrollPane(memberTable);
         
         // Initial table load
-        updateMemberTable(model);
+        updateMemberTable();
         
         JPanel controlsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 15));
         controlsPanel.setBackground(BACKGROUND_COLOR.darker());
         
         JButton addButton = createStyledButton("Add New Member", ACCENT_COLOR);
-        addButton.addActionListener(e -> showAddMemberDialog(model));
+        // --- FIX: Call method without parameter ---
+        addButton.addActionListener(e -> showAddMemberDialog());
+        // --- END FIX ---
         
         JButton viewBooksButton = createStyledButton("View Borrowed Books", SECONDARY_COLOR);
         viewBooksButton.addActionListener(e -> viewBorrowedBooks(memberTable));
@@ -349,10 +420,11 @@ public class LibraryGUI extends JFrame {
         return panel;
     }
     
-    private void updateMemberTable(DefaultTableModel model) {
-        model.setRowCount(0); // Clear existing rows
+    // --- FIX: Method now uses class field, no parameter ---
+    private void updateMemberTable() {
+        memberTableModel.setRowCount(0); // Clear existing rows
         for (Member m : members) {
-            model.addRow(new Object[]{
+            memberTableModel.addRow(new Object[]{
                 m.getId(), 
                 m.getName(), 
                 m.getBorrowedBooks().size()
@@ -360,7 +432,8 @@ public class LibraryGUI extends JFrame {
         }
     }
     
-    private void showAddMemberDialog(DefaultTableModel model) {
+    private void showAddMemberDialog() {
+    // --- END FIX ---
         JTextField idField = new JTextField(10);
         JTextField nameField = new JTextField(10);
 
@@ -374,6 +447,7 @@ public class LibraryGUI extends JFrame {
                  "Add New Member", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         
         if (result == JOptionPane.OK_OPTION) {
+            Member newMember = null;
             try {
                 String id = idField.getText().trim();
                 String name = nameField.getText().trim();
@@ -386,12 +460,17 @@ public class LibraryGUI extends JFrame {
                     throw new LibraryException.DuplicateIdException(id, "Member");
                 }
                 
-                Member newMember = new Member(id, name);
+                newMember = new Member(id, name);
                 members.add(newMember);
-                saveData(); // Calls the method that now includes try-catch
-                updateMemberTable(model);
+                saveData(); // Attempt to save
+                
+                updateMemberTable();
                 showMessage("Member added successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
-            } catch (LibraryException e) {
+            } catch (LibraryException | FileOperationException e) {
+                 // --- FIX: Rollback logic ---
+                if (newMember != null) {
+                    members.remove(newMember);
+                }
                 showMessage("Member Add Failed: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }
         }
@@ -400,7 +479,9 @@ public class LibraryGUI extends JFrame {
     private void viewBorrowedBooks(JTable table) {
         int selectedRow = table.getSelectedRow();
         if (selectedRow >= 0) {
-            String memberId = (String) table.getValueAt(selectedRow, 0);
+            // --- FIX: Use class field ---
+            String memberId = (String) memberTableModel.getValueAt(selectedRow, 0);
+            // --- END FIX ---
             
             Member member = members.stream()
                 .filter(m -> m.getId().equals(memberId))
@@ -434,24 +515,28 @@ public class LibraryGUI extends JFrame {
         
         // Table setup
         String[] columnNames = {"ID", "Member ID", "Book ID", "Issue Date", "Return Date", "Status"};
-        DefaultTableModel model = new DefaultTableModel(columnNames, 0);
-        JTable transactionTable = new JTable(model);
+        // --- FIX: Use the class field ---
+        transactionTableModel = new DefaultTableModel(columnNames, 0);
+        JTable transactionTable = new JTable(transactionTableModel);
+        // --- END FIX ---
         JScrollPane scrollPane = new JScrollPane(transactionTable);
         
         // Initial table load
-        updateTransactionTable(model);
+        updateTransactionTable();
         
         JPanel controlsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 15));
         controlsPanel.setBackground(BACKGROUND_COLOR.darker());
         
         JButton issueButton = createStyledButton("Issue Book", ACCENT_COLOR);
-        issueButton.addActionListener(e -> issueBook(model));
+        // --- FIX: Call method without parameter ---
+        issueButton.addActionListener(e -> issueBook());
         
         JButton returnButton = createStyledButton("Return Book", DANGER_COLOR);
-        returnButton.addActionListener(e -> returnBook(transactionTable, model));
+        returnButton.addActionListener(e -> returnBook(transactionTable));
         
         JButton filterButton = createStyledButton("Filter", SECONDARY_COLOR);
-        filterButton.addActionListener(e -> filterTransactions(model));
+        filterButton.addActionListener(e -> filterTransactions());
+        // --- END FIX ---
         
         controlsPanel.add(issueButton);
         controlsPanel.add(returnButton);
@@ -462,10 +547,13 @@ public class LibraryGUI extends JFrame {
         return panel;
     }
 
-    private void updateTransactionTable(DefaultTableModel model) {
-        model.setRowCount(0);
-        for (Transaction t : transactions) {
-            model.addRow(new Object[]{
+    // --- FIX: Method now uses class field, no parameter ---
+    private void updateTransactionTable() {
+        transactionTableModel.setRowCount(0);
+        // Display newest transactions first
+        for (int i = transactions.size() - 1; i >= 0; i--) {
+            Transaction t = transactions.get(i);
+            transactionTableModel.addRow(new Object[]{
                 t.getTransactionId(),
                 t.getMemberId(),
                 t.getBookId(),
@@ -476,7 +564,8 @@ public class LibraryGUI extends JFrame {
         }
     }
 
-    private void issueBook(DefaultTableModel model) {
+    private void issueBook() {
+    // --- END FIX ---
         JTextField memberIdField = new JTextField(10);
         JTextField bookIdField = new JTextField(10);
 
@@ -490,19 +579,24 @@ public class LibraryGUI extends JFrame {
                  "Issue Book", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
 
         if (result == JOptionPane.OK_OPTION) {
+            Transaction newTrans = null;
+            Book book = null;
+            Member member = null;
+            String bookId = ""; // Store bookId for rollback
+            
             try {
                 String memberId = memberIdField.getText().trim();
-                String bookId = bookIdField.getText().trim();
+                bookId = bookIdField.getText().trim();
                 
                 if (memberId.isEmpty() || bookId.isEmpty()) {
-                    throw new LibraryException.InvalidInputException("Member ID and Book ID");
+                    throw new LibraryException.InvalidInputException("Member ID and Book ID must be filled.");
                 }
                 
-                Member member = members.stream()
+                member = members.stream()
                     .filter(m -> m.getId().equals(memberId))
                     .findFirst().orElseThrow(() -> new LibraryException.MemberNotFoundException(memberId));
 
-                Book book = books.stream()
+                book = books.stream()
                     .filter(b -> b.getId().equals(bookId))
                     .findFirst().orElseThrow(() -> new LibraryException.BookNotFoundException(bookId));
                 
@@ -515,35 +609,51 @@ public class LibraryGUI extends JFrame {
                 member.borrowBook(bookId);
                 
                 String transId = "T" + UUID.randomUUID().toString().substring(0, 5).toUpperCase();
-                Transaction newTrans = new Transaction(transId, memberId, bookId);
+                newTrans = new Transaction(transId, memberId, bookId);
                 transactions.add(newTrans);
 
-                saveData(); // Calls the method that now includes try-catch
-                // Update other tables manually since they are in different CardLayout panels
-                updateBookTable((DefaultTableModel)((JTable)((JScrollPane)mainPanel.getComponent(1)).getViewport().getView()).getModel());
-                updateMemberTable((DefaultTableModel)((JTable)((JScrollPane)mainPanel.getComponent(2)).getViewport().getView()).getModel());
-                updateTransactionTable(model);
-                showMessage("Book Issued Successfully! Transaction ID: " + transId, "Success", JOptionPane.INFORMATION_MESSAGE);
+                saveData(); // Attempt to save all changes
                 
-            } catch (LibraryException e) {
+                // --- FIX: Call no-arg methods ---
+                updateBookTable();
+                updateMemberTable();
+                updateTransactionTable();
+                // --- END FIX ---
+                showMessage("Book Issued Successfully! Transaction ID: " + newTrans.getTransactionId(), "Success", JOptionPane.INFORMATION_MESSAGE);
+                
+            } catch (LibraryException | FileOperationException e) {
+                // --- FIX: Rollback logic ---
+                if (newTrans != null) {
+                    transactions.remove(newTrans);
+                }
+                if (book != null && book.isIssued()) { // Check if state was changed
+                    book.returnBook(); // Revert book status
+                }
+                if (member != null && member.getBorrowedBooks().contains(bookId)) {
+                    member.returnBook(bookId); // Revert member's borrowed list
+                }
                 showMessage("Issue Failed: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
 
-    private void returnBook(JTable table, DefaultTableModel model) {
+    private void returnBook(JTable table) {
         int selectedRow = table.getSelectedRow();
         if (selectedRow < 0) {
             showMessage("Please select an active transaction to mark as returned.", "Warning", JOptionPane.WARNING_MESSAGE);
             return;
         }
         
-        String transId = (String) model.getValueAt(selectedRow, 0);
-        String bookId = (String) model.getValueAt(selectedRow, 2);
-        String memberId = (String) model.getValueAt(selectedRow, 1);
-
+        // --- FIX: Use class field ---
+        String transId = (String) transactionTableModel.getValueAt(selectedRow, 0);
+        // --- END FIX ---
+        
+        Transaction transaction = null;
+        Book book = null;
+        Member member = null;
+        
         try {
-            Transaction transaction = transactions.stream()
+            transaction = transactions.stream()
                 .filter(t -> t.getTransactionId().equals(transId))
                 .findFirst().orElse(null);
             
@@ -552,43 +662,63 @@ public class LibraryGUI extends JFrame {
                  return;
             }
             
-            // Update models
-            Book book = books.stream()
-                .filter(b -> b.getId().equals(bookId))
-                .findFirst().orElseThrow(() -> new LibraryException.BookNotFoundException(bookId)); // Should not happen if data is consistent
+            String bookId = transaction.getBookId();
+            String memberId = transaction.getMemberId();
             
-            Member member = members.stream()
+            // Update models
+            book = books.stream()
+                .filter(b -> b.getId().equals(bookId))
+                .findFirst().orElseThrow(() -> new LibraryException.BookNotFoundException(bookId));
+            
+            member = members.stream()
                 .filter(m -> m.getId().equals(memberId))
-                .findFirst().orElseThrow(() -> new LibraryException.MemberNotFoundException(memberId)); // Should not happen
+                .findFirst().orElseThrow(() -> new LibraryException.MemberNotFoundException(memberId));
 
             // Perform return
             book.returnBook();
             member.returnBook(bookId);
             transaction.markAsReturned();
 
-            saveData(); // Calls the method that now includes try-catch
-            // Update other tables manually
-            updateBookTable((DefaultTableModel)((JTable)((JScrollPane)mainPanel.getComponent(1)).getViewport().getView()).getModel());
-            updateMemberTable((DefaultTableModel)((JTable)((JScrollPane)mainPanel.getComponent(2)).getViewport().getView()).getModel());
-            updateTransactionTable(model);
+            saveData(); // Attempt to save all changes
+            
+            // --- FIX: Call no-arg methods ---
+            updateBookTable();
+            updateMemberTable();
+            updateTransactionTable();
+            // --- END FIX ---
             showMessage("Book returned successfully! Transaction updated.", "Success", JOptionPane.INFORMATION_MESSAGE);
 
-        } catch (LibraryException e) {
+        } catch (LibraryException | FileOperationException e) {
+            // --- FIX: Rollback logic ---
+            if (transaction != null && transaction.isReturned()) {
+                transaction.undoReturn(); // Requires a new method in Transaction.java
+            }
+            if (book != null && !book.isIssued()) {
+                book.issueBook();
+            }
+            if (member != null && transaction != null && !member.getBorrowedBooks().contains(transaction.getBookId())) {
+                member.borrowBook(transaction.getBookId());
+            }
             showMessage("Return Failed: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    private void filterTransactions(DefaultTableModel model) {
+    private void filterTransactions() {
+    // --- FIX: Use class field ---
         String[] options = {"Show All", "Show Active", "Show Returned"};
         int choice = JOptionPane.showOptionDialog(this, 
             "Select filter:", "Filter Transactions",
             JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, 
             null, options, options[0]);
         
-        model.setRowCount(0);
-        for (Transaction t : transactions) {
+        transactionTableModel.setRowCount(0);
+        // Display newest first
+        for (int i = transactions.size() - 1; i >= 0; i--) {
+        // --- END FIX ---
+            Transaction t = transactions.get(i);
             boolean include = false;
             switch (choice) {
+                case -1: // User closed dialog
                 case 0: // All
                     include = true;
                     break;
@@ -601,7 +731,7 @@ public class LibraryGUI extends JFrame {
             }
             
             if (include) {
-                model.addRow(new Object[]{
+                transactionTableModel.addRow(new Object[]{
                     t.getTransactionId(),
                     t.getMemberId(),
                     t.getBookId(),
@@ -613,3 +743,4 @@ public class LibraryGUI extends JFrame {
         }
     }
 }
+
