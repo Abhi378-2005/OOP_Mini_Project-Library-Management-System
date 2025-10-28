@@ -99,7 +99,7 @@ public class LoginScreen extends JFrame {
         JButton loginButton = new JButton("Login");
         loginButton.setFont(new Font("Segoe UI", Font.BOLD, 16));
         loginButton.setBackground(ACCENT_COLOR);
-        loginButton.setForeground(Color.WHITE);
+        loginButton.setForeground(Color.BLACK);
         loginButton.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
         loginButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
         loginButton.setAlignmentX(Component.CENTER_ALIGNMENT);

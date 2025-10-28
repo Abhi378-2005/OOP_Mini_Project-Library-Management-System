@@ -88,7 +88,7 @@ public class LibraryGUI extends JFrame {
     private JButton createStyledButton(String text, Color background) {
         JButton button = new JButton(text);
         button.setBackground(background);
-        button.setForeground(Color.WHITE);
+        button.setForeground(Color.BLACK);
         button.setFont(new Font("Segoe UI", Font.BOLD, 14));
         button.setFocusPainted(false);
         button.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
