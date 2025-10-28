@@ -23,7 +23,10 @@ public class FileHandler {
         // 1. Check if the directory exists, if not, create it
         File parentDir = file.getParentFile();
         if (parentDir != null && !parentDir.exists()) {
-            parentDir.mkdirs();
+            if (!parentDir.mkdirs()) {
+                // If directory creation fails, we can't proceed.
+                throw new FileOperationException("creating directory " + parentDir.getPath(), new IOException("Failed to create directory."));
+            }
         }
 
         try (FileInputStream fis = new FileInputStream(file);
@@ -38,6 +41,11 @@ public class FileHandler {
         } catch (FileNotFoundException e) {
             // This is normal for the first run or if a data file hasn't been created yet.
             // We return an empty list instead of throwing an exception.
+            return new ArrayList<>();
+        } catch (EOFException e) {
+            // --- THIS IS THE FIX ---
+            // This happens if the file is empty (e.g., transactions.txt is 0 bytes)
+            // This is also normal, so we return an empty list.
             return new ArrayList<>();
         } catch (IOException e) {
             // Handles errors during reading, connection issues, etc.
