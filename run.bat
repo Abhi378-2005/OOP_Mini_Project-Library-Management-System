@@ -1,19 +1,34 @@
 @echo off
-echo 1. Compiling Java source files...
-javac src/*.java
+title Library Management System
+echo ================================
+echo   COMPILING JAVA SOURCE FILES
+echo ================================
+echo.
 
-REM Check if compilation was successful
+REM Create bin directory if it doesn’t exist
+if not exist bin mkdir bin
+
+REM Compile all .java files from src to bin
+javac -d bin src\*.java
+
 if %errorlevel% neq 0 (
     echo.
-    echo ERROR: Compilation failed. Please review the errors.
+    echo ❌ Compilation failed! Please fix the errors above.
     pause
     exit /b
 )
 
-echo 2. Compilation successful. Running the application...
 echo.
-java -cp src src.Main
+echo ✅ Compilation successful!
+echo ================================
+echo   RUNNING LIBRARY MANAGEMENT SYSTEM
+echo ================================
+echo.
+
+REM Run the main class
+java -cp bin src.Main
 
 echo.
-echo Application closed.
+echo ================================
+echo Program finished.
 pause
