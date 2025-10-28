@@ -307,7 +307,7 @@ public class LibraryGUI extends JFrame {
                 updateBookTable();
                 showMessage("Book added successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
                 
-            } catch (LibraryException | FileOperationException e) {
+            } catch (LibraryException e) {
                 // --- FIX: Rollback logic ---
                 // If save fails or input is invalid, remove the book that was added
                 if (newBook != null) {
@@ -466,7 +466,7 @@ public class LibraryGUI extends JFrame {
                 
                 updateMemberTable();
                 showMessage("Member added successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
-            } catch (LibraryException | FileOperationException e) {
+            } catch (LibraryException e) {
                  // --- FIX: Rollback logic ---
                 if (newMember != null) {
                     members.remove(newMember);
@@ -621,7 +621,7 @@ public class LibraryGUI extends JFrame {
                 // --- END FIX ---
                 showMessage("Book Issued Successfully! Transaction ID: " + newTrans.getTransactionId(), "Success", JOptionPane.INFORMATION_MESSAGE);
                 
-            } catch (LibraryException | FileOperationException e) {
+            } catch (LibraryException e) {
                 // --- FIX: Rollback logic ---
                 if (newTrans != null) {
                     transactions.remove(newTrans);
@@ -688,7 +688,7 @@ public class LibraryGUI extends JFrame {
             // --- END FIX ---
             showMessage("Book returned successfully! Transaction updated.", "Success", JOptionPane.INFORMATION_MESSAGE);
 
-        } catch (LibraryException | FileOperationException e) {
+        } catch (LibraryException e) {
             // --- FIX: Rollback logic ---
             if (transaction != null && transaction.isReturned()) {
                 transaction.undoReturn(); // Requires a new method in Transaction.java
