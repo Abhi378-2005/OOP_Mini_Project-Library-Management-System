@@ -10,13 +10,7 @@ import src.LibraryException.FileOperationException;
  */
 public class FileHandler {
 
-    /**
-     * Reads a list of Serializable objects from a specified file path.
-     * @param <T> The type of objects in the list.
-     * @param filePath The path to the file.
-     * @return An ArrayList of objects read from the file. Returns an empty list if the file is new or missing.
-     * @throws FileOperationException if a critical I/O or class error occurs.
-     */
+    
     public static <T> ArrayList<T> readFromFile(String filePath) throws FileOperationException {
         File file = new File(filePath);
         
