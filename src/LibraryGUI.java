@@ -4,7 +4,7 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.UUID;
-import java.util.stream.Collectors; // <-- FIXED: Added this missing import
+import java.util.stream.Collectors; 
 import src.LibraryException; // Changed to simple import to avoid nested class issues
 import src.LibraryException.FileOperationException; // Explicitly import the nested class
 
